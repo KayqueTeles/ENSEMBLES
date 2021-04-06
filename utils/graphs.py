@@ -74,12 +74,8 @@ def loss_graph(history, num_epochs, train_size, fold, name_file_rede, title_grap
     plt.legend(['Train', 'Valid'], loc='upper left')
     plt.savefig('LossxEpoch_{}_{}_Fold_{}_version_{}.png'.format(name_file_rede, train_size, fold, version))
 
-def roc_graph(rede, model, x_test, y_test, title_graph_rede, train_size, fold, version, name_file_rede, auc_all, fpr_all, tpr_all, lauc):
+def roc_graph(rede, model, x_test, y_test, title_graph_rede, train_size, fold, version, name_file_rede):
     tpr, fpr, auc, auc2, thres = utils.roc_curve_calculate(y_test, x_test, model, rede)
-    lauc.append(auc)
-    auc_all.append(auc2)
-    fpr_all.append(fpr)
-    tpr_all.append(tpr)
     print(' ** Plotting %s ROC Graph' % rede)
     plt.figure()
     plt.plot([0, 1], [0, 1], 'k--')  # k = color black
@@ -89,14 +85,10 @@ def roc_graph(rede, model, x_test, y_test, title_graph_rede, train_size, fold, v
     plt.xlabel('false positive rate', fontsize=14)
     plt.ylabel('true positive rate', fontsize=14)
     plt.savefig('ROCLensDetectNet_{}_{}_Fold_{}_version_{}.png'. format(name_file_rede, train_size, fold, version))
-    return auc_all, fpr_all, tpr_all, lauc
+    return tpr, fpr, auc, auc2, thres
 
-def roc_graph_ensemble(rede, model_resnet, model_effnet, x_test, y_test, title_graph_rede, train_size, fold, version, name_file_rede, auc_all, fpr_all, tpr_all, lauc):
+def roc_graph_ensemble(rede, model_resnet, model_effnet, x_test, y_test, title_graph_rede, train_size, fold, version, name_file_rede):
     tpr, fpr, auc, auc2, thres = utils.roc_curve_calculate_ensemble(y_test, x_test, model_resnet, model_effnet, rede, version)
-    lauc.append(auc)
-    auc_all.append(auc2)
-    fpr_all.append(fpr)
-    tpr_all.append(tpr)
     print(' ** Plotting %s ROC Graph' % rede)
     plt.figure()
     plt.plot([0, 1], [0, 1], 'k--')  # k = color black
@@ -106,7 +98,20 @@ def roc_graph_ensemble(rede, model_resnet, model_effnet, x_test, y_test, title_g
     plt.xlabel('false positive rate', fontsize=14)
     plt.ylabel('true positive rate', fontsize=14)
     plt.savefig('ROCLensDetectNet_{}_{}_Fold_{}_version_{}.png'. format(name_file_rede, train_size, fold, version))
-    return auc_all, fpr_all, tpr_all, lauc, thres
+    return tpr, fpr, auc, auc2, thres
+
+def roc_graphs_sec(rede, models, x_test, y_test, model_list, train_size, fold, version, name_file_rede):
+    tpr, fpr, auc, auc2, thres = utils.roc_curves_sec(y_test, x_test, models, model_list, version)
+    print(' ** Plotting %s ROC Graph' % rede)
+    plt.figure()
+    plt.plot([0, 1], [0, 1], 'k--')  # k = color black
+    plt.plot(fpr, tpr, label='fold' + str(fold) + '& AUC: %.3f' % auc, color='C' + str(fold), linewidth=3)  # for color 'C'+str(fold), for fold[0 9]
+    plt.legend(loc='lower right', ncol=1, mode='expand')
+    plt.title('{} - ROC with {} training samples on fold {}'.format('ensemble', train_size, fold))
+    plt.xlabel('false positive rate', fontsize=14)
+    plt.ylabel('true positive rate', fontsize=14)
+    plt.savefig('ROCLensDetectNet_{}_{}_Fold_{}_version_{}.png'. format(name_file_rede, train_size, fold, version))
+    return tpr, fpr, auc, auc2, thres
 
 def final_roc_graph(k_folds, train_size, medians_x, medians_y, mauc, lowlim, highlim, name_file_rede, title_graph_rede, version):
     plt.figure()
@@ -120,39 +125,33 @@ def final_roc_graph(k_folds, train_size, medians_x, medians_y, mauc, lowlim, hig
     plt.legend(loc='lower right', ncol=1, mode='expand')
     plt.savefig('ROCLensDetectNet_{}_Full_{}_version_{}.png'.format(name_file_rede, train_size, version))
 
-def fscore_graph(rede, model, x_test, y_test, title_graph_rede, train_size, fold, version, name_file_rede, prec_all, rec_all, f_1_score_all, f_100_score_all):
+def fscore_graph(rede, model, x_test, y_test, title_graph_rede, train_size, fold, version, name_file_rede):
     prec, rec, f_1_score, f_100_score, thres = utils.FScore_curves(rede, model, x_test, y_test)  #(y_test, x_test, model_resnet, 'resnet')
-    prec_all.append(prec)
-    rec_all.append(rec)
-    f_1_score_all.append(f_1_score)
-    f_100_score_all.append(f_100_score)
     print(' ** Plotting F Scores Graph')
     plt.figure()
-    plt.plot([0, 1], [0, 1], 'k--')  # k = color black
-    plt.plot(prec, rec, label='fold' + str(fold) + '& F1: %.3f & F100: %.3f' % (f_1_score, f_100_score), color='C' + str(fold), linewidth=3)  
+    plt.plot([0, 1], [0.5, 0.5], 'k--')  # k = color black
+    #plt.plot(rec, np.linspace(0.5, 0.5, len(rec)), 'k--')  # k = color black
+    plt.plot(rec, prec, label='fold' + str(fold) + '& F1: %.3f & F100: %.3f' % (f_1_score, f_100_score), color='C' + str(fold), linewidth=3)  
     plt.legend(loc='lower right', ncol=1, mode='expand')
-    plt.title('{} - ROC with {} training samples on fold {}'.format(title_graph_rede, train_size, fold))
-    plt.xlabel('false positive rate', fontsize=14)
-    plt.ylabel('true positive rate', fontsize=14)
+    plt.title('{} - FScore with {} training samples on fold {}'.format(title_graph_rede, train_size, fold))
+    plt.ylabel('precision', fontsize=14)
+    plt.xlabel('recall', fontsize=14)
     plt.savefig('FScoreGraph_{}_{}_Fold_{}_version_{}.png'. format(name_file_rede, train_size, fold, version))
-    return prec_all, rec_all, f_1_score_all, f_100_score_all
+    return prec, rec, f_1_score, f_100_score
 
-def fscore_graph_ensemble(rede, model_resnet, model_effnet, x_test, y_test, title_graph_rede, train_size, fold, version, name_file_rede, prec_all, rec_all, f_1_score_all, f_100_score_all):
-    prec, rec, f_1_score, f_100_score, thres = utils.FScore_curves_ensemble(rede, model_resnet, model_effnet, x_test, y_test)  #(y_test, x_test, model_resnet, 'resnet')
-    prec_all.append(prec)
-    rec_all.append(rec)
-    f_1_score_all.append(f_1_score)
-    f_100_score_all.append(f_100_score)
+def fscore_graph_ensemble(model_list, models, x_test, y_test, train_size, fold, version):
+    prec, rec, f_1_score, f_100_score, thres = utils.FScore_curves_ensemble(y_test, x_test, models, model_list)  #(y_test, x_test, model_resnet, 'resnet')
     print(' ** Plotting F Scores Graph')
     plt.figure()
-    plt.plot([0, 1], [0, 1], 'k--')  # k = color black
-    plt.plot(prec, rec, label='fold' + str(fold) + '& F1: %.3f & F100: %.3f' % (f_1_score, f_100_score), color='C' + str(fold), linewidth=3)  
+    plt.plot([0, 1], [0.5, 0.5], 'k--')  # k = color black
+    #plt.plot(rec, np.linspace(0.5, 0.5, len(rec)), 'k--')  # k = color black
+    plt.plot(rec, prec, label='fold' + str(fold) + '& F1: %.3f & F100: %.3f' % (f_1_score, f_100_score), color='C' + str(fold), linewidth=3)  
     plt.legend(loc='lower right', ncol=1, mode='expand')
-    plt.title('{} - ROC with {} training samples on fold {}'.format(title_graph_rede, train_size, fold))
-    plt.xlabel('false positive rate', fontsize=14)
-    plt.ylabel('true positive rate', fontsize=14)
-    plt.savefig('FScoreGraph_{}_{}_Fold_{}_version_{}.png'. format(name_file_rede, train_size, fold, version))
-    return prec_all, rec_all, f_1_score_all, f_100_score_all
+    plt.title('{} - FScore with {} training samples on fold {}'.format('ensemble', train_size, fold))
+    plt.ylabel('precision', fontsize=14)
+    plt.xlabel('recall', fontsize=14)
+    plt.savefig('FScoreGraph_{}_{}_Fold_{}_version_{}.png'. format('ensemble', train_size, fold, version))
+    return prec, rec, f_1_score, f_100_score
 
 def plot_grafico_final(study, err, name_file_rede, title_graph_rede, version):
     lim_superior = 1.0
@@ -201,11 +200,14 @@ def ultimate_ROC(lauc, auc_all, thres, tpr_all, fpr_all, name_file_rede, title_g
 
     mauc = np.percentile(lauc, 50.0)
     mAUCall = np.percentile(auc_all, 50.0)
+    print(" ** len tpr_all:", len(tpr_all))
+    print(" ** len fpr_all:", len(fpr_all))
+    print(" ** lauc:", lauc)
+    print(" ** auc_all:", auc_all)
 
     for num in range(0, int(thres), 1):
-        # for num in range(0, thres, 1):
-        lis = [item[num] for item in tpr_all]
-        los = [item[num] for item in fpr_all]
+        lis = [item for item in tpr_all]
+        los = [item for item in fpr_all]
 
         medians_x.append(np.percentile(los, 50.0))
         medians_y.append(np.percentile(lis, 50.0))
@@ -222,3 +224,47 @@ def ultimate_ROC(lauc, auc_all, thres, tpr_all, fpr_all, name_file_rede, title_g
     final_roc_graph(k_folds, train_size, medians_x, medians_y, mauc, lowlim, highlim, name_file_rede, title_graph_rede, version)
 
     return highauc, lowauc, mauc
+
+def ultimate_fscore(lauc, auc_all, thres, tpr_all, fpr_all, name_file_rede, title_graph_rede, k_folds, train_size, rede, version):
+    print('\n ** Generating ultimate ROC graph for %s...' % rede)
+    medians_y, medians_x, lowlim, highlim = ([] for i in range(4))
+
+    print(" ** len tpr_all:", len(tpr_all))
+    print(" ** len fpr_all:", len(fpr_all))
+    print(" ** lauc:", lauc)
+    print(" ** auc_all:", auc_all)
+
+    mauc = np.percentile(lauc, 50.0)
+    mAUCall = np.percentile(auc_all, 50.0)
+
+    for num in range(0, int(thres), 1):
+        los = [item for item in tpr_all]
+        lis = [item for item in fpr_all]
+
+        medians_x.append(np.percentile(los, 50.0))
+        medians_y.append(np.percentile(lis, 50.0))
+        lowlim.append(np.percentile(lis, 15.87))
+        highlim.append(np.percentile(lis, 84.13))
+
+    lowauc = metrics.auc(medians_x, lowlim)
+    highauc = metrics.auc(medians_x, highlim)
+    print('\n\n\n ** IS THIS CORRECT?')
+    print(lowauc, mauc, highauc)
+    print(lowauc, mAUCall, highauc)
+
+    # Plotting Final ROC graph
+    final_fscore_graph(k_folds, train_size, medians_x, medians_y, mauc, lowlim, highlim, name_file_rede, title_graph_rede, version)
+
+    return highauc, lowauc, mauc
+
+def final_fscore_graph(k_folds, train_size, medians_x, medians_y, mauc, lowlim, highlim, name_file_rede, title_graph_rede, version):
+    plt.figure()
+    plt.plot([0, 1], [0, 1], 'k--')  # k = color black
+    plt.title('Median FScore {} over {} folds with {} training samples'.format(title_graph_rede, k_folds, train_size))
+    plt.ylabel('precision', fontsize=14)
+    plt.xlabel('recall', fontsize=14)
+    plt.plot(medians_x, medians_y, 'b', label='AUC: {}'.format(mauc), linewidth=3)
+    plt.fill_between(medians_x, medians_y, lowlim, color='blue', alpha=0.3, interpolate=True)
+    plt.fill_between(medians_x, highlim, medians_y, color='blue', alpha=0.3, interpolate=True)
+    plt.legend(loc='lower right', ncol=1, mode='expand')
+    plt.savefig('FScoreGraph_{}_Full_{}_version_{}.png'.format(name_file_rede, train_size, version))
