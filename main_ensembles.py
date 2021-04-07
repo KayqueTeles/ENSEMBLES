@@ -22,6 +22,7 @@ from keras.optimizers import SGD
 from keras.optimizers import Adam
 from sklearn.metrics import roc_auc_score
 from sklearn import metrics
+from tensorflow.keras import backend as K
 import numpy as np
 from IPython.display import Image
 from keras.optimizers import SGD, Adam
@@ -57,13 +58,14 @@ version = 51  # EXECUTION VERSION
 num_classes = 2  # NUMBER OF OUTPUT CLASSES
 rede = 'ensemble'     ##OPTIONS: 'resnet', 'ensemble' or 'effnet'
 weights = 'imagenet'   #'imagenet' or None
-preload_weights = True
+preload_weights = False
+ch2_testing = False
 ch1_weights = False
 aug_data = True     ##DO YOU WANT SOME DATA AUGMENTATION?
 aug_type = ['rotation_range=90, horizontal_flip=True, vertical_flip=True']
 learning_rate = 0.01
 optimizer = 'sgd'  ##CHOOSE 'sgd' or 'adam' or 'nadam'
-avgpool = False
+avgpool = True
 dropout = False
 loss = 'binary_crossentropy'
 num_epochs = 50  # NUMBER OF EPOCHS
@@ -71,7 +73,7 @@ batch_size = 64  # Tamanho do Batch
 k_folds = 10  # NÚMERO DE FOLDS
 percent_data = 1.0  # Porcentagem de Dados DE TESTE a ser usado - TODO - Definir como será utilizado
 vallim = 3000  # Quantidade de dados de validação
-challenge = 'challenge2'
+challenge = 'challenge1'
 ##about types of ensembles used
 dirichlet = False
 logistic = False
@@ -86,7 +88,7 @@ l_ml = len(model_list)
 l_ml1 = len(model_list)+1
 
 if challenge == 'challenge1':
-    version = 'C2'
+    version = 'C2'   ##C1 is being used to massive trainings
     preload_weights = False
     weights = 'imagenet'
     avgpool = True
@@ -133,7 +135,7 @@ train_data_sizes = [800.0]
 
 if challenge == 'challenge1':
     train_data_sizes = [490.0, 480.0, 470.0, 460.0, 450.0, 440.0, 430.0, 420.0, 410.0, 500.0, 390.0, 380.0, 370.0, 360.0, 350.0, 340.0, 330.0, 320.0, 310.0, 300.0, 200.0, 290.0, 280.0, 270.0, 260.0, 250.0, 240.0, 230.0, 220.0, 210.0, 400.0, 190.0, 180.0, 170.0, 160.0, 150.0, 140.0, 130.0, 120.0, 110.0, 100.0, 200.0, 90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 16000.0, 14000.0, 12000.0, 10000.0, 9000.0, 8000.0, 7000.0, 6000.0, 5000.0, 4000.0, 3000.0, 2500.0, 2250.0, 2000.0, 1750.0, 1500.0, 1400.0, 1300.0, 1200.0, 1100.0, 1000.0, 950.0, 900.0, 850.0, 800.0, 750.0, 700.0, 650.0, 600.0, 550.0]
-    #train_data_sizes = [14000.0]
+    #train_data_sizes = [10000.0]
 
 if testing:
     train_data_sizes = [100.0]
@@ -148,12 +150,15 @@ print('\n ## Num CPUs Available: ', len(tf.config.experimental.list_physical_dev
 # Verificando se o dataset está disponível ou será necessário fazer o download
 print('\n ** Verifying data...')
 if challenge == 'challenge1':
-    x_data_original, y_data_original, index = files_changer.data_downloader(dataset_size, version)
+    x_data_original, y_data_original, index, channels = files_changer.data_downloader(dataset_size, version, input_shape)
 else:
     from data_generator_challenge2 import DataGenerator
     from datagen_chal2 import DataGeneratorCh2
     #x_data_original, y_data_original, index, channels = DataGenerator(dataset_size, version, input_shape)
     x_data_original, y_data_original, index, channels = DataGeneratorCh2(dataset_size, version, input_shape)
+if ch2_testing:
+    from datagen_chal2 import DataGeneratorCh2
+    x_test_original, y_test_original, index, channels = DataGeneratorCh2(10000, version, input_shape)
 Path('/home/kayque/LENSLOAD/').parent
 os.chdir('/home/kayque/LENSLOAD/')
 
@@ -206,6 +211,10 @@ for u in range(0, len(train_data_sizes)):
     #print('\n ** y_data shape: ', y_data.shape, ' ** Total dataset size: ', len(y_data), 'objects.')
     #print('\n ** Balancing number of samples on each class for train+val sets with %s samples...' % train_size)
     y_data, x_data, y_test, x_test, y_val, x_val = utils.test_samples_balancer(y_data, x_data, vallim, train_size, percent_data, challenge)
+    if ch2_testing:
+        x_test = x_test_original
+        y_test = y_test_original
+    y_test = to_categorical(y_test)
 
     #from utils.dnn import split_data
     #x_data, y_data, x_val, y_val, x_test, y_test, idxs = split_data(x_data, y_data, validation_split = .1)
@@ -318,6 +327,7 @@ for u in range(0, len(train_data_sizes)):
 
             elaps = (time.perf_counter() - foldtimer) / 60
             print('\n ** Fold TIME: %.3f minutes.' % elaps)
+            K.clear_session() 
 
     # CLOSE Loop para a execução de todas as FOLDS
     print('\n ** Training and evaluation complete.')

@@ -16,7 +16,7 @@ path_folder = '/home/kayque/LENSLOAD/RESULTS'
 # path_folder = '/home/hdd2T/icaroDados'
 
 # Método que faz o download do dataset, se necessário
-def data_downloader(num_samples, version):
+def data_downloader(num_samples, version, input_shape):
     foldtimer = time.perf_counter()
 
     PATH = os.getcwd()
@@ -67,17 +67,18 @@ def data_downloader(num_samples, version):
     x_datasaved = h5py.File(var + 'x_data20000fits.h5', 'r')
     Ni_channels = 0  # first channel
     N_channels = 3  # number of channels
+    channels = ['R', 'G', 'U']
 
     x_data = x_datasaved['data']
     x_data = x_data[:, :, :, Ni_channels:Ni_channels + N_channels]
     x_data = x_data[:num_samples, :, :, :]
 
-    index = utils.save_clue(x_data, y_data, num_samples, version, 'generator', 66, 5, 5, 0)
+    index = utils.save_clue(x_data, y_data, num_samples, version, 'generator', input_shape, 5, 5, 0, channels)
 
     elaps = (time.perf_counter() - foldtimer) / 60
     print(' ** Data Generation TIME: %.3f minutes.' % elaps)
 
-    return (x_data, y_data, index)
+    return (x_data, y_data, index, channels)
 
 def file_cleaner(k_folds, version, input_shape, num_epochs, challenge_size):
     counter, weicounter, csvcounter = (0 for i in range(3))
@@ -123,8 +124,8 @@ def file_cleaner(k_folds, version, input_shape, num_epochs, challenge_size):
                     os.remove('./AUCxSize_{}_version_{}.png'. format(mod, version))
                     counter = counter + 1
                 # csv_name = 'training_{}_fold_{}.csv'. format(mod, fold) -- Resnet e Effnet
-                if os.path.exists('training_{}_fold_{}.csv'. format(mod, fold)):
-                    os.remove('training_{}_fold_{}.csv'. format(mod, fold))
+                if os.path.exists('./training_{}_fold_{}.csv'. format(mod, fold)):
+                    os.remove('./training_{}_fold_{}.csv'. format(mod, fold))
                     counter = counter + 1
                 if os.path.exists('./ROCLensDetectNet_{}_{}_Fold_{}_version_{}.png'. format(mod, train_size, fold, version)):
                     os.remove('./ROCLensDetectNet_{}_{}_Fold_{}_version_{}.png'. format(mod, train_size, fold, version))

@@ -48,15 +48,17 @@ def model_builder(ix, x_data, weights, avgpool, dropout, preload_weights):
             avg_pool = tf.keras.layers.GlobalAveragePooling2D()(model.output)
             drop_out = tf.keras.layers.Dropout(0.5)(avg_pool)
             y_hat = tf.keras.layers.Dense(2, activation="sigmoid")(drop_out)
+            model = tf.keras.models.Model(model.input, y_hat)
         elif avgpool:
             avg_pool = tf.keras.layers.GlobalAveragePooling2D()(model.output)
             y_hat = tf.keras.layers.Dense(2, activation="sigmoid")(avg_pool)
+            model = tf.keras.models.Model(model.input, y_hat)
     elif dropout:
         drop_out = tf.keras.layers.Dropout(0.5)(model.output)
         y_hat = tf.keras.layers.Dense(2, activation="sigmoid")(drop_out)
+        model = tf.keras.models.Model(model.input, y_hat)
     else:
-        y_hat = tf.keras.layers.Dense(2, activation="sigmoid")
-    model = tf.keras.models.Model(model.input, y_hat)
+        model = tf.keras.models.Model(model.input)
 
     if preload_weights:
         model.load_weights(r'./Train_model_weights_%s_50_C1_Backup.h5' % (ix))

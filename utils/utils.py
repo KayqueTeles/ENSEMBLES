@@ -670,6 +670,8 @@ def save_clue(x_data, y_data, TR, version, step, input_shape, nrows, ncols, inde
         index = figcount + 1
     plt.savefig("CLUE_FROM_DATASET_{}_samples_{}_version_{}_step_{}x{}_size_{}_num.png". format(TR, version, step, input_shape, input_shape, index))
     print("CLUE_FROM_DATASET_{}_samples_{}_version_{}_step_{}x{}_size_{}_num.png saved.". format(TR, version, step, input_shape, input_shape, index))
+
+    print_images_clecio_like(x_data=x_data, num_prints=10, num_channels=len(channels), input_shape=input_shape)
     return index
 
 # Separa os conjuntos de treino, teste e validação.
@@ -766,7 +768,7 @@ def roc_curve_calculate(y_test, x_test, model, rede):
     probsp = probs[:, 1]
     #print('\n ** probsp: ', probsp)
     # print('\n ** probsp.shape: ', probsp.shape)
-    y_new = y_test #[:, 1]
+    y_new = y_test[:, 1]
     #print('\n ** y_new: ', y_new)
     thres = 1000
 
@@ -792,7 +794,7 @@ def roc_curve_calculate(y_test, x_test, model, rede):
         tpr.append(tp_rate)
         fpr.append(fp_rate)
 
-    auc2 = roc_auc_score(y_test, probsp)
+    auc2 = roc_auc_score(y_test[:, 1], probsp)
     auc = metrics.auc(fpr, tpr)
 
     print('\n ** AUC (via metrics.auc): {}, AUC (via roc_auc_score): {}'.format(auc, auc2))
@@ -822,7 +824,7 @@ def roc_curves_sec(y_test, x_test, models, model_list, version):
     probsp = probs[:, 1]
     # print('\n ** probsp: ', probsp)
     # print('\n ** probsp.shape: ', probsp.shape)
-    y_new = y_test# [:, 1]
+    y_new = y_test[:, 1]
     # print('\n ** y_new: ', y_new)
     thres = 1000
 
@@ -848,7 +850,7 @@ def roc_curves_sec(y_test, x_test, models, model_list, version):
         tpr.append(tp_rate)
         fpr.append(fp_rate)
 
-    auc2 = roc_auc_score(y_test, probsp)
+    auc2 = roc_auc_score(y_test[:, 1], probsp)
     auc = metrics.auc(fpr, tpr)
 
     print('\n ** AUC (via metrics.auc): {}, AUC (via roc_auc_score): {}'.format(auc, auc2))
@@ -891,7 +893,7 @@ def FScore_curves(rede, model, x_test, y_test):
     probsp = probs[:, 1]
     # print('\n ** probsp: ', probsp)
     # print('\n ** probsp.shape: ', probsp.shape)
-    y_new = y_test
+    y_new = y_test[:, 1]
     #print('\n ** y_new: ', y_new)
     thres = 1000
 
@@ -925,9 +927,9 @@ def FScore_curves(rede, model, x_test, y_test):
         rec.append(recall)
 
     #f_1_score = get_classification_metric(y_test, probs, False)
-    f_1_score = sklearn.metrics.f1_score(y_test, np.around(probsp))
+    f_1_score = sklearn.metrics.f1_score(y_test[:, 1], np.around(probsp))
     #f_001_score = get_classification_metric(y_test, probs, True)
-    f_001_score = sklearn.metrics.fbeta_score(y_test, np.around(probsp), beta=0.01)
+    f_001_score = sklearn.metrics.fbeta_score(y_test[:, 1], np.around(probsp), beta=0.01)
 
     print('\n ** F1 Score: {}, Fbeta Score: {}'.format(f_1_score, f_001_score))
 
@@ -949,7 +951,7 @@ def FScore_curves_ensemble(y_test, x_test, models, model_list):
     probsp = probs[:, 1]
     # print('\n ** probsp: ', probsp)
     # print('\n ** probsp.shape: ', probsp.shape)
-    y_new = y_test
+    y_new = y_test[:, 1]
     #print('\n ** y_new: ', y_new)
     thres = 1000
 
@@ -982,8 +984,8 @@ def FScore_curves_ensemble(y_test, x_test, models, model_list):
         prec.append(precision)
         rec.append(recall)
 
-    f_1_score = sklearn.metrics.f1_score(y_test, np.around(probsp))
-    f_001_score = sklearn.metrics.fbeta_score(y_test, np.around(probsp), beta=0.01)
+    f_1_score = sklearn.metrics.f1_score(y_test[:, 1], np.around(probsp))
+    f_001_score = sklearn.metrics.fbeta_score(y_test[:, 1], np.around(probsp), beta=0.01)
     #f_1_score = get_classification_metric(y_test, probs, False)
     #f_001_score = get_classification_metric(y_test, probs, True)
 

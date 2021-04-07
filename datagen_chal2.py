@@ -59,6 +59,9 @@ from keras.utils import Progbar
 
 """ Matplotlib """
 import matplotlib.pyplot as plt
+from tensorflow.keras.utils import to_categorical
+
+import cv2
 
 
 # %% md
@@ -169,6 +172,9 @@ def DataGeneratorCh2(num_samples, version, input_shape):
                     """ Set data in array """
                     image_data = utils.normalize(image_data)
                     image_data[np.where(np.isnan(image_data))] = 0
+                    #image_data = np.uint8(image_data)
+                    #image_data = utils.imadjust(image_data)
+                    #image_data = cv2.fastNlMeansDenoising(image_data, None, 30, 7, 21)
                     images[iid,:,:,ich] = image_data
                     if iid not in idxs2keep:
                         idxs2keep.append(iid)
@@ -193,37 +199,22 @@ def DataGeneratorCh2(num_samples, version, input_shape):
     catalog = catalog[:num_samples]
     print(len(images), len(catalog))
 
-    #mmin = images.min()
-    #mmax = images.max()
-    #images = utils.normalize(images.astype(np.float16))
-    #images[np.where(np.isnan(images))] = 0
-    #images = (images - mmin)/(mmax - mmin)
-
-    # %%
-
-    """
-    r = 2
-    X = images[r,::-1,:,-1]
-    #X[26:40,26:40] = 0
-    plt.imshow(np.log10(X), cmap='gray')
-    plt.title('{} - {} - is_lens: {}'.format(r,labels[r],is_lens[r]))
-    """
-
-    """
     fig = plt.figure(figsize=(10,3))
     NN = images.shape[-1]
     for i in range(NN):
         plt.subplot(1,NN,i+1)
     _ = plt.hist(np.clip(images[:,:,:,i].flatten(),-0.4e-10,2.5e-10),bins=256)
     _ = plt.title(channels[i])
-    #fig.savefig('histogram_for_normalization.png')
-    """
+    fig.savefig('histogram_for_normalization.png')
 
     is_lens = (catalog['n_source_im'] > 0) & (catalog['mag_eff'] > 1.6) & (catalog['n_pix_source'] > 20)  # 700
     is_lens = 1.0 * is_lens
+#    is_lens = to_categorical(is_lens, 2)
+    print(catalog['ID'])
+    print(is_lens)
 
-    inputs = images.astype(np.float16)
-    outputs = is_lens.to_numpy()
+    inputs = images#.astype(np.float16)
+    outputs = is_lens#.to_numpy()
     index = utils.save_clue(inputs, outputs, num_samples, version, 'generator', input_shape, 5, 5, 0, channels)
     
     #images = utils.normalize(images)
