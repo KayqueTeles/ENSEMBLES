@@ -91,7 +91,7 @@ def add_time_mark(chrono, label):
 def normalizey(X, vmin=-4e-11, vmax=2.5e-10):
     X = np.clip(X, vmin, vmax)
     X = (X - vmin) / (vmax - vmin)
-    X = np.log10(X.astype(np.float16) + 1e-8)
+    X = np.log10(X.astype(np.float16) + 1e-10)
     mmin = X.min()
     mmax = X.max()
     X = (X - mmin) / (mmax - mmin)
@@ -125,7 +125,7 @@ def DataGeneratorCh2(num_samples, version, input_shape):
     print(' ** Using channels: ', channels)
     idxs2keep = []
     #missing_data = [13913, 26305, 33597, 44071, 59871, 61145, 70458, 88731, 94173]
-    missing_data = [13914, 26306, 33598, 44072, 59872, 61146, 70459, 88732, 94174]
+    missing_data = [13912, 26304, 33596, 44070, 59870, 61144, 70457, 88730, 94172]
     for a in missing_data:
         labels = catalog['ID'].drop(a)
     labels = labels[0:num_samples]
@@ -172,7 +172,7 @@ def DataGeneratorCh2(num_samples, version, input_shape):
                     """ Set data in array """
                     image_data = utils.normalize(image_data)
                     image_data[np.where(np.isnan(image_data))] = 0
-                    #image_data = np.uint8(image_data)
+                    #image_data = np.uint32(image_data)
                     #image_data = utils.imadjust(image_data)
                     #image_data = cv2.fastNlMeansDenoising(image_data, None, 30, 7, 21)
                     images[iid,:,:,ich] = image_data
@@ -193,6 +193,8 @@ def DataGeneratorCh2(num_samples, version, input_shape):
     #print(idxs2keep)
     #print(' ** images')
     #print(images)
+    np.random.shuffle(idxs2keep)
+    images = images.astype(np.float16)
     catalog = catalog.loc[idxs2keep]
     images = images[idxs2keep]
     #images = images[:num_samples]
@@ -209,19 +211,20 @@ def DataGeneratorCh2(num_samples, version, input_shape):
 
     is_lens = (catalog['n_source_im'] > 0) & (catalog['mag_eff'] > 1.6) & (catalog['n_pix_source'] > 20)  # 700
     is_lens = 1.0 * is_lens
-#    is_lens = to_categorical(is_lens, 2)
+    #is_lens = to_categorical(is_lens, 2)
     print(catalog['ID'])
     print(is_lens)
 
-    inputs = images#.astype(np.float16)
-    outputs = is_lens#.to_numpy()
-    index = utils.save_clue(inputs, outputs, num_samples, version, 'generator', input_shape, 5, 5, 0, channels)
+    inputs = images#.astype(np.float16) 
+    outputs = is_lens.to_numpy()
     
     #images = utils.normalize(images)
     print(inputs[0,:,:,:])
     #print(outputs)
 
-    index = utils.save_clue(inputs, outputs, num_samples, version, 'generator', input_shape, 5, 5, index, channels)
+    index = utils.save_clue(inputs, outputs, num_samples, version, 'generator', input_shape, 8, 8, 0, channels)
+    #inputs = {'images': inputs}
+    #outputs = {'is_lens': outputs}
     elaps = (time.perf_counter() - foldtimer) / 60
     print(' ** Data Generation TIME: %.3f minutes.' % elaps)
     return (inputs, outputs, index, channels)

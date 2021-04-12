@@ -8,9 +8,10 @@ import time
 import sklearn
 from pathlib import Path
 from sklearn.model_selection import StratifiedKFold
-from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, CSVLogger
+from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, CSVLogger, EarlyStopping, TensorBoard
 from keras.optimizers import SGD
 from keras.optimizers import Adam
+from .threading import StoppableThread
 from sklearn.metrics import roc_auc_score
 from sklearn import metrics
 import numpy as np
@@ -22,6 +23,7 @@ from sklearn.metrics import roc_auc_score
 from PIL import Image
 import bisect
 import model_lib
+from joblib import Parallel, delayed
 
 def unique(ar, return_index=False, return_inverse=False,
            return_counts=False, axis=None):
@@ -212,7 +214,7 @@ def _unpack_tuple(x):
     else:
         return x
 
-def print_images_clecio_like(x_data, num_prints, num_channels, input_shape):
+def print_images_clecio_like(x_data, num_prints, num_channels, input_shape, index):
     Path('/home/kayque/LENSLOAD/').parent
     os.chdir('/home/kayque/LENSLOAD/')
 
@@ -264,7 +266,7 @@ def print_images_clecio_like(x_data, num_prints, num_channels, input_shape):
         plt.imshow(rgbi)
         plt.title('Result RGB')
         plt.grid(False)
-        plt.savefig('img_I_{}.png'.format(sm))
+        plt.savefig('img_I_{}_{}.png'.format(sm, index))
 
         plt.figure(2)
         plt.subplot(141)
@@ -283,17 +285,18 @@ def print_images_clecio_like(x_data, num_prints, num_channels, input_shape):
         plt.imshow(rgb)
         plt.title('Result RGB')
         plt.grid(False)
-        plt.savefig('img_I_D_{}.png'.format(sm))
+        plt.savefig('img_I_D_{}_{}.png'.format(sm, index))
 
         for bu in range(num_prints*100):
-            if os.path.exists(source+'./img_I_D_{}.png'.format(sm)):
-                shutil.move(source+'./img_I_D_{}.png'.format(sm), dest1)
+            if os.path.exists(source+'./img_I_D_{}_{}.png'.format(sm, index)):
+                shutil.move(source+'./img_I_D_{}_{}.png'.format(sm, index), dest1)
                 counter = counter + 1
-            if os.path.exists(source+'./img_I_{}.png'.format(sm)):
-                shutil.move(source+'./img_I_{}.png'.format(sm), dest1)
+            if os.path.exists(source+'./img_I_{}_{}.png'.format(sm, index)):
+                shutil.move(source+'./img_I_{}_{}.png'.format(sm, index), dest1)
                 counter = counter + 1
 
     print("\n ** Done. %s files moved." % counter)
+    return index
 
 def intersect1d(ar1, ar2, assume_unique=False, return_indices=False):
     """
@@ -671,24 +674,29 @@ def save_clue(x_data, y_data, TR, version, step, input_shape, nrows, ncols, inde
     plt.savefig("CLUE_FROM_DATASET_{}_samples_{}_version_{}_step_{}x{}_size_{}_num.png". format(TR, version, step, input_shape, input_shape, index))
     print("CLUE_FROM_DATASET_{}_samples_{}_version_{}_step_{}x{}_size_{}_num.png saved.". format(TR, version, step, input_shape, input_shape, index))
 
-    print_images_clecio_like(x_data=x_data, num_prints=10, num_channels=len(channels), input_shape=input_shape)
+    #index = print_images_clecio_like(x_data=x_data, num_prints=10, num_channels=len(channels), input_shape=input_shape, index)
     return index
 
 # Separa os conjuntos de treino, teste e validação.
 def test_samples_balancer(y_data, x_data, vallim, train_size, percent_data, challenge):
+    foldtimer = time.perf_counter()
     y_size = len(y_data)
     y_yes, y_no, y_excess = ([] for i in range(3))
     e_lente = 0
     n_lente = 0
     print(y_size)
+    print(y_data)
     if challenge == 'challenge1':
         if train_size > 1600:
             print(' ** Using Temporary train_size')
             train_size = train_size/10
         else:
             print(' ** Using Regular train_size')
+
     for y in range(y_size):
-        if y_data[y] == 1:
+        print(y_data[y])
+
+        if y_data[y] == 1.0:
             # Pegamos uma quantidade de dados para treino e o que sobra vai para o excess e é usado para validação/teste
             e_lente += 1
             if len(y_yes) < (train_size * 5):
@@ -726,31 +734,34 @@ def test_samples_balancer(y_data, x_data, vallim, train_size, percent_data, chal
     # Preenchemos o y_data, usando os índices criados no y_y
     y_data = y_data[y_y]
     x_data = x_data[y_y]
+    elaps = (time.perf_counter() - foldtimer) / 60
+    print(' ** Function TIME: %.3f minutes.' % elaps)
 
     return [y_data, x_data, y_test, x_test, y_val, x_val]
-
 
 # Randomiza os dados para divisão nas folds
 def load_data_kfold(k, x_data, y_data):
     print('Preparing Folds')
     folds = list(StratifiedKFold(n_splits=k, shuffle=True, random_state=1).split(x_data, y_data))
-
     return folds
 
-
-def get_callbacks(name_weights, patience_lr, name_csv):
+def get_callbacks(name_weights, patience_lr, name_csv, tensorboard_path = None):
     mcp_save = ModelCheckpoint(name_weights)
     csv_logger = CSVLogger(name_csv)
+    #early_stopper = EarlyStopping(monitor='val_loss',
+    #                        min_delta=0,
+    #                        patience=10,
+    #                        verbose=0, 
+    #                        mode='auto')
     reduce_lr_loss = ReduceLROnPlateau(monitor='loss', factor=0.1, patience=patience_lr, verbose=1, epsilon=1e-4,
-                                       mode='max')
-    return [mcp_save, csv_logger, reduce_lr_loss]
-
+                                       mode='max', min_lr=0.1e-6)
+    
+    return [mcp_save, csv_logger, reduce_lr_loss]#, early_stopper]
 
 def select_optimizer(optimizer, learning_rate):
     if optimizer == 'sgd':
         print('\n ** Usando otimizador: ', optimizer)
         opt = SGD(lr=learning_rate, decay=1e-6, momentum=0.9, nesterov=True)
-
     else:
         print('\n ** Usando otimizador: ', optimizer)
         opt = Adam(learning_rate=learning_rate)
@@ -775,10 +786,10 @@ def roc_curve_calculate(y_test, x_test, model, rede):
     threshold_v = np.linspace(1, 0, thres)
     tpr, fpr = ([] for i in range(2))
 
-    for tt in range(0, len(threshold_v), 1):
+    for tt in range(len(threshold_v)):
         thresh = threshold_v[tt]
         tp_score, fp_score, tn_score, fn_score = (0 for i in range(4))
-        for xz in range(0, len(probsp), 1):
+        for xz in range(len(probsp)):
             if probsp[xz] > thresh:
                 if y_new[xz] == 1:
                     tp_score = tp_score + 1
@@ -798,11 +809,6 @@ def roc_curve_calculate(y_test, x_test, model, rede):
     auc = metrics.auc(fpr, tpr)
 
     print('\n ** AUC (via metrics.auc): {}, AUC (via roc_auc_score): {}'.format(auc, auc2))
-    # print('\n ** TP_Rate: {}'.format(tpr))
-    # print('\n ** FP_Rate: {}'.format(fpr))
-    # print('\n ** AUC: {}'.format(auc))
-    # print('\n ** AUC2: {}'.format(auc2))
-    # print('\n ** Thresh: {}'.format(thres))
 
     return [tpr, fpr, auc, auc2, thres]
 
@@ -1053,10 +1059,12 @@ def normalize(X, vmin=-4e-11, vmax=2.5e-10):
     X = np.clip(X, vmin, vmax)
     X = (X - vmin) / (vmax - vmin)
     X = np.log10(X.astype(np.float16) + 1e-8)
-    #X = np.log10(X.astype(np.float16) + 1e-11)
+    #X = np.log10(X.astype(np.float16) + 1e-8)
     mmin = np.min(X) #X.min()
     mmax = np.max(X) #X.max()
-    X = (X - mmin) / (mmax - mmin)
+    #print(mmin, mmax)
+    #X = (X - mmin) / (mmax - mmin)
+    X = (X + mmin) / (mmax + mmin)
     return X
 
 def get_classification_metric(testy, probs, beta, arg=0.01):

@@ -54,11 +54,11 @@ cwd = os.getcwd()
 print(cwd)
 print(cwd)
 #PARAMETERS
-version = 56  # EXECUTION VERSION
+version = 51  # EXECUTION VERSION
 num_classes = 2  # NUMBER OF OUTPUT CLASSES
 rede = 'ensemble'     ##OPTIONS: 'resnet', 'ensemble' or 'effnet'
 weights = 'imagenet'   #'imagenet' or None
-preload_weights = True
+preload_weights = False
 use_alternative_model = False
 ch2_testing = False
 ch1_weights = False
@@ -66,10 +66,10 @@ aug_data = True     ##DO YOU WANT SOME DATA AUGMENTATION?
 aug_type = ['rotation_range=90, horizontal_flip=True, vertical_flip=True']
 learning_rate = 0.01
 optimizer = 'sgd'  ##CHOOSE 'sgd' or 'adam' or 'nadam'
-avgpool = False
-dropout = False
+avgpool = True
+dropout = True
 loss = 'binary_crossentropy'
-loss_regularization = False
+loss_regularization = True
 num_epochs = 50  # NUMBER OF EPOCHS
 batch_size = 64  # Tamanho do Batch
 k_folds = 10  # NÚMERO DE FOLDS
@@ -99,7 +99,7 @@ if challenge == 'challenge1':
     dataset_size = 20000
     vallim = 2000
 
-testing = False
+testing = True
 if testing:
     version = 'T2'  # VERSÃO PRA COLOCAR NAS PASTAS
     vallim = 50
@@ -308,9 +308,8 @@ for u in range(0, len(train_data_sizes)):
             cn = 0
             for ix in model_list:
                 print('\n ** Current model: ', ix)
-                if use_alternative_model:
-                    model = model_lib.alternative_model_builder(x_data, y_data, ix, ix, True, loss)
-                model = model_lib.model_builder(ix, x_data, weights, avgpool, dropout, preload_weights, loss_regularization)
+                model = model_lib.alternative_model_builder(x_data, y_data, ix, ix, True, loss)
+                #model = model_lib.model_builder(ix, x_data, weights, avgpool, dropout, preload_weights, loss_regularization)
                 print('\n ** Model Summary: \n', model.summary())
                 print('\n ** Training %s.' % ix)
                 callbacks = model_lib.compile_model(ix, model, optimizer, fold, version, learning_rate, loss, ch1_weights)
